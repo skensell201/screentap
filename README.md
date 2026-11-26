@@ -1,38 +1,42 @@
 # ScreenTap
 
-**Снимок выделенной области экрана по двойному нажатию обеих кнопок мыши — сразу в буфер обмена.**
+**Capture a selected screen area by pressing both mouse buttons at once — straight into the clipboard.**
 
-Нажмите одновременно левую и правую кнопки мыши — появится режим выделения области.
-Протяните мышь, отпустите кнопки — выделенный фрагмент уже лежит в буфере обмена.
-Приложение живёт в меню-баре, не занимает место в Dock и не перехватывает обычные клики.
+Press the left and right mouse buttons simultaneously and the area selection mode opens up.
+Drag with the mouse, release, and the captured region is already in your clipboard.
+The app lives in the menu bar, keeps out of the Dock and never gets in the way of ordinary clicks.
 
-![Иконка ScreenTap](Resources/icon-1024.png)
+![ScreenTap icon](Resources/icon-1024.png)
 
-![Режим выделения области](docs/overlay.png)
+![Selection mode](docs/overlay.png)
+
+> The image above is an illustration rendered by `Scripts/render-preview.swift`, not a screenshot
+> of a real desktop.
 
 ---
 
-## Возможности
+## Features
 
-- **Жест «обе кнопки»** — одновременное нажатие левой и правой кнопок мыши открывает
-  режим выделения. Работает и в обратном порядке, и двумя быстрыми кликами.
-- **Снимок сразу в буфер** — PNG кладётся в `NSPasteboard.general`, вставка работает
-  в любом приложении (`⌘V`).
-- **Полноэкранный оверлей** — затемнение, рамка выделения с угловыми маркерами,
-  счётчик размера, `Enter` — подтвердить, `Esc` — отменить.
-- **Клик без перетаскивания** выделяет весь экран под курсором.
-- **Меню-баре** — иконка в строке меню, запуск при входе, быстрый доступ к настройкам прав.
-- **Звуковой отклик** — короткий щелчок подтверждает, что снимок сделан.
-- **Никаких зависимостей** — чистый Swift и AppKit, без сторонних библиотек.
+- **The "both buttons" gesture** — pressing the left and the right mouse button at the same time
+  opens the selection mode. Works in either order and as two quick clicks as well.
+- **Straight into the clipboard** — the PNG lands in `NSPasteboard.general`, so pasting works
+  everywhere (`⌘V`).
+- **Full-screen overlay** — dimmed background, selection frame with corner handles, live size
+  readout, `Enter` to confirm, `Esc` to cancel.
+- **Click without dragging** selects the whole screen under the cursor.
+- **Menu bar app** — icon in the menu bar, launch at login, quick access to the permission
+  settings.
+- **Audio feedback** — a short click confirms that the screenshot was taken.
+- **No dependencies** — plain Swift and AppKit, no third-party libraries.
 
-## Требования
+## Requirements
 
-- macOS 14 Sonoma или новее
-- Xcode 16 / Swift 6 (только для сборки из исходников)
+- macOS 14 Sonoma or newer
+- Xcode 16 / Swift 6 (only needed to build from source)
 
-## Установка
+## Installation
 
-### Из исходников
+### From source
 
 ```bash
 git clone https://github.com/skensell201/screentap.git
@@ -40,138 +44,141 @@ cd screentap
 ./Scripts/build.sh
 ```
 
-Готовое приложение лежит в `build/ScreenTap.app`.
+The assembled application is written to `build/ScreenTap.app`.
 
-Чтобы разрешения и автозапуск работали стабильно, перенесите приложение в `/Applications`:
+Permissions and launch at login behave most reliably when the app lives in `/Applications`:
 
 ```bash
 cp -R build/ScreenTap.app /Applications/
 open /Applications/ScreenTap.app
 ```
 
-### Первый запуск
+### First launch
 
-macOS спросит два разрешения — они выдаются один раз в «Системных настройках»:
+macOS asks for two permissions. They are granted once, in System Settings:
 
-| Разрешение | Где выдать | Зачем |
+| Permission | Where to enable it | Why it is needed |
 |---|---|---|
-| **Запись экрана** | Конфиденциальность и безопасность → Запись экрана | Захват изображения экрана. Без него снимок невозможен |
-| **Универсальный доступ** | Конфиденциальность и безопасность → Универсальный доступ | Перехват нажатий обеих кнопок без показа контекстного меню |
+| **Screen Recording** | Privacy & Security → Screen Recording | Capturing the screen contents. Without it no screenshot can be taken |
+| **Accessibility** | Privacy & Security → Accessibility | Intercepting the presses of both buttons without letting the context menu of the app under the cursor appear |
 
-«Универсальный доступ» необязателен: без него приложение работает, но при жесте
-под курсором будет всплывать контекстное меню того приложения, в котором вы находитесь.
+Accessibility is optional: without it the app still works, but the context menu of the
+application under the cursor pops up when the gesture is used.
 
-Из меню-баре можно в любой момент открыть нужную страницу настроек, включить
-«Запускать при входе» и вручную запустить режим выделения.
+The menu bar icon opens both settings pages at any time, and it also holds the
+"Launch at Login" switch and a manual trigger for the selection mode.
 
-## Использование
+## Usage
 
-1. Нажмите **обе** кнопки мыши одновременно и отпустите их.
-2. Появится полупрозрачный оверлей — протяните мышь, выделяя нужную область.
-3. Отпустите кнопки. Снимок выбранной области окажется в буфере обмена.
+1. Press **both** mouse buttons at the same time and release them.
+2. A translucent overlay appears — drag with the mouse to select the area you need.
+3. Release the buttons. The screenshot of the selected area is in your clipboard.
 
-Управление в режиме выделения:
+While the selection mode is active:
 
-| Действие | Результат |
+| Action | Result |
 |---|---|
-| Протянуть мышь | Выделить область |
-| `Enter` / `Space` | Подтвердить выделение |
-| `Esc` | Отменить |
-| Клик без перетаскивания | Выделить весь экран под курсором |
+| Drag with the mouse | Select an area |
+| `Enter` / `Space` | Confirm the selection |
+| `Esc` | Cancel |
+| Click without dragging | Select the whole screen under the cursor |
 
-Горячие клавиши нет — жест «обе кнопки» и есть основной способ.
+There are no keyboard shortcuts — the "both buttons" gesture is the primary way to use the app.
 
-## Как это устроено
+## How it works
 
 ```
 ChordDetector ──► ChordStateMachine ──► SelectionOverlay ──► ScreenCapturer ──► ClipboardWriter
-  (CGEventTap          (чистая логика,        (окно выделения)   (ScreenCaptureKit)   (PNG в
-   или NSEvent)         покрыта тестами)                                          буфер обмена)
+  (CGEventTap           (pure logic,          (selection window)   (ScreenCaptureKit)   (PNG into the
+   or NSEvent)           covered by tests)                                          clipboard)
 ```
 
-| Модуль | Файл | Ответственность |
+| Module | File | Responsibility |
 |---|---|---|
-| `ChordStateMachine` | `ChordStateMachine.swift` | Чистая машина состояний: превращает поток нажатий в решение «жест распознан». Не зависит от AppKit, поэтому тестируется синтетическими событиями |
-| `ChordDetector` | `ChordDetector.swift` | Источник событий: `CGEventTap` (умеет поглощать события) или `NSEvent`-мониторы как запасной вариант |
-| `SelectionOverlay` | `SelectionOverlay.swift` | Полноэкранное окно выделения: затемнение, рамка, HUD, клавиатура |
-| `ScreenCapturer` | `ScreenCapturer.swift` | Захват через `ScreenCaptureKit` с кадрированием по точкам; запасной путь через `CGWindowListCreateImage` |
-| `ClipboardWriter` | `ClipboardWriter.swift` | PNG и TIFF в `NSPasteboard`, звуковой отклик |
-| `LaunchAgentController` | `LaunchAgentController.swift` | Автозапуск через `~/Library/LaunchAgents` |
-| `AppDelegate` | `AppDelegate.swift` | Меню-баре, разрешения, общий сценарий |
+| `ChordStateMachine` | `ChordStateMachine.swift` | Pure state machine that turns a stream of button presses into a "gesture recognised" decision. Free of AppKit, so it is testable with synthetic events |
+| `ChordDetector` | `ChordDetector.swift` | Event source: `CGEventTap` (able to swallow events) or `NSEvent` monitors as a fallback |
+| `SelectionOverlay` | `SelectionOverlay.swift` | Full-screen selection window: dimming, frame, size HUD, keyboard handling |
+| `ScreenCapturer` | `ScreenCapturer.swift` | Capture via `ScreenCaptureKit` with cropping in points, fallback to `CGWindowListCreateImage` |
+| `ClipboardWriter` | `ClipboardWriter.swift` | PNG and TIFF into `NSPasteboard`, plus the sound feedback |
+| `LaunchAgentController` | `LaunchAgentController.swift` | Launch at login through `~/Library/LaunchAgents` |
+| `AppDelegate` | `AppDelegate.swift` | Menu bar, permissions, the overall flow |
 
-Ключевые решения:
+Key decisions:
 
-- **Правый клик всегда поглощается и буферизуется.** Если жест не состоялся,
-  нажатие возвращается в систему через `CGEvent.post` — контекстное меню открывается,
-  просто чуть позже. Если жест состоялся, поглощаются обе кнопки и меню не появляется вовсе.
-- **Левая кнопка не задерживается.** Задерживать все клики в системе на 200 мс ради
-  одного жеста недопустимо, поэтому «жест с началом на левой кнопке» может оставить
-  единичный лишний клик в приложении под курсором. Жест, начатый с правой кнопки, чистый.
-- **Захват идёт в нативном разрешении дисплея** (`CGDisplayCopyDisplayMode`), а не в
-  стандартных 1920×1080 — иначе ScreenCaptureKit растягивает картинку и кадрирование
-  «едет».
-- **Автозапуск сделан через LaunchAgent**, а не `SMAppService`: он работает независимо
-  от того, где лежит `.app`, и не требует постоянной подписи.
+- **The right click is always swallowed and buffered.** If no gesture materialises, the
+  press is handed back to the system through `CGEvent.post` — the context menu shows up,
+  just a little later. If the gesture does materialise, both buttons are swallowed and the
+  menu never appears at all.
+- **The left button is never delayed.** Delaying every click in the system by 200 ms just to
+  support one gesture is not acceptable, so a gesture that *starts* with the left button may
+  leave a single stray click in the application under the cursor. A gesture that starts with
+  the right button is clean.
+- **Capturing happens at the native resolution of the display** (`CGDisplayCopyDisplayMode`)
+  instead of the default 1920×1080, which would stretch the picture and throw the cropping off.
+- **Launch at login uses a LaunchAgent** rather than `SMAppService`: it works no matter where
+  the `.app` lives and does not require a permanent signature.
 
-## Разработка
+## Development
 
 ```bash
-# Сборка приложения
+# Build the application
 ./Scripts/build.sh              # release
 ./Scripts/build.sh --debug
 
-# Тесты логики распознавания жеста (без GUI)
+# Test the gesture recognition logic (no GUI)
 .build/release/ScreenTap --selftest
 
-# Прогон полного цикла: оверлей → выделение → снимок → буфер обмена
+# Run the full cycle: overlay → selection → capture → clipboard
 .build/release/ScreenTap --demo --debug
 
-# Пересобрать иконку из исходника
+# Rebuild the icon from the source PNG
 ./Scripts/make-icon.sh
+
+# Re-render the selection mode illustration
+swift Scripts/render-preview.swift docs/overlay.png
 ```
 
-Полезные флаги:
+Useful flags:
 
-- `--debug` — подробный лог в stdout (события мыши, состояние жеста, параметры захвата).
-- `--selftest` — прогон `ChordStateMachine` по 11 синтетическим сценариям
-  (обычный клик, обычный правый клик, жест обеими руками в обе стороны, жест
-  двумя кликами, перетаскивание, сброс состояния) и выход с кодом `0`/`1`.
-- `--demo` — программный прогон выделения и снимка; результат сохраняется
-  в `/tmp/screentap-demo.png`.
+- `--debug` — verbose log on stdout (mouse events, gesture state, capture parameters).
+- `--selftest` — runs the `ChordStateMachine` against 11 synthetic scenarios (plain click,
+  plain right click, the gesture in both orders, the gesture as two clicks, dragging, state
+  reset) and exits with `0`/`1`.
+- `--demo` — scripted selection and capture; the result is written to `/tmp/screentap-demo.png`.
 
-### Стабильная подпись (для разрешений)
+### Stable code signature (for permissions)
 
-По умолчанию приложение подписывается ad-hoc (`codesign -s -`). Идентичность TCC в
-таком случае меняется при каждой пересборке, и разрешение «Запись экрана» приходится
-выдавать заново. Чтобы этого избежать, используйте собственную self-signed
-идентичность:
+By default the app is signed ad-hoc (`codesign -s -`). The TCC identity of an ad-hoc signed
+app changes with every rebuild, which means the screen recording permission has to be granted
+again. To avoid that, use your own self-signed identity:
 
 ```bash
 SCREENTAP_CODESIGN_IDENTITY="ScreenTap SelfSigned" ./Scripts/build.sh
 ```
 
-### Структура репозитория
+### Repository layout
 
 ```
-Sources/ScreenTap/     исходники Swift
-Scripts/build.sh       сборка ScreenTap.app
-Scripts/make-icon.sh   генерация AppIcon.icns из PNG
-Scripts/pad-icon.swift подготовка полотна иконки 1024x1024
-Resources/             AppIcon.icns и исходник иконки
-docs/                  скриншоты и спецификация
+Sources/ScreenTap/     Swift sources
+Scripts/build.sh       builds ScreenTap.app
+Scripts/make-icon.sh   generates AppIcon.icns from a PNG
+Scripts/pad-icon.swift prepares the 1024x1024 icon canvas
+Scripts/render-preview.swift renders the selection mode illustration
+Resources/             AppIcon.icns and the icon source
+docs/                  illustrations and the design spec
 ```
 
-## Известные ограничения
+## Known limitations
 
-- **Нужен Accessibility** для «чистого» жеста. Без него контекстное меню приложения
-  под курсором будет всплывать при нажатии обеих кнопок.
-- **Нельзя отозвать уже доставленный клик.** Если жест начат с левой кнопки, она
-  успевает нажать то, что под курсором.
-- **Несколько мониторов**: оверлей покрывает их объединённую область, снимок берётся
-  с экрана, на котором лежит большая часть выделения.
-- **Снимок отражает состояние экрана на момент подтверждения**, буфер обмена
-  перезаписывается.
+- **Accessibility is required for a clean gesture.** Without it the context menu of the app
+  under the cursor pops up when both buttons are pressed.
+- **A delivered click cannot be taken back.** If the gesture starts with the left button, that
+  button has already pressed whatever was under the cursor.
+- **Multiple displays**: the overlay covers the union of all displays, and the capture is taken
+  from the display that holds the larger part of the selection.
+- **The screenshot reflects the screen at the moment it was confirmed**, and the clipboard is
+  overwritten.
 
-## Лицензия
+## License
 
-MIT — см. [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).

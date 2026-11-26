@@ -38,13 +38,13 @@ final class LaunchAgentController {
         try data.write(to: plistURL)
 
         runLaunchctl(arguments: ["bootstrap", "gui/\(getuid())", plistURL.path])
-        Log.d("Автозапуск включён: \(plistURL.path)")
+        Log.d("Launch at login enabled: \(plistURL.path)")
     }
 
     func disable() {
         runLaunchctl(arguments: ["bootout", "gui/\(getuid())/\(Self.label)"])
         try? FileManager.default.removeItem(at: plistURL)
-        Log.d("Автозапуск выключен")
+        Log.d("Launch at login disabled")
     }
 
     private func runLaunchctl(arguments: [String]) {
@@ -56,7 +56,7 @@ final class LaunchAgentController {
         do {
             try task.run()
         } catch {
-            Log.e("Не удалось выполнить launchctl \(arguments.joined(separator: " ")): \(error.localizedDescription)")
+            Log.e("Could not run launchctl \(arguments.joined(separator: " ")): \(error.localizedDescription)")
         }
     }
 }

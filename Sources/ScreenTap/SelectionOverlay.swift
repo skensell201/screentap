@@ -70,7 +70,7 @@ final class SelectionOverlayController {
             }
         }
 
-        Log.d("Оверлей выделения показан")
+        Log.d("Selection overlay shown")
     }
 
     /// Hides the overlay without selecting anything.
@@ -83,7 +83,7 @@ final class SelectionOverlayController {
         self.window = nil
         self.view = nil
         window.orderOut(nil)
-        Log.d("Оверлей закрыт: \(result)")
+        Log.d("Overlay closed: \(result)")
         onFinish?(result)
     }
 }

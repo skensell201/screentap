@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# Собирает ScreenTap.app из исходников Swift.
+# Builds ScreenTap.app from the Swift sources.
 #
 #   Scripts/build.sh [--debug]
 #
-# Переменные окружения:
-#   SCREENTAP_CODESIGN_IDENTITY — идентичность для codesign (по умолчанию ad-hoc: "-").
-#                              С постоянной self-signed подписью разрешение «Запись экрана»
-#                              переживает пересборку приложения.
+# Environment variables:
+#   SCREENTAP_CODESIGN_IDENTITY — identity passed to codesign (defaults to ad-hoc: "-").
+#                              With a stable self-signed identity the screen recording
+#                              permission survives rebuilding the app.
 #
 set -euo pipefail
 
@@ -23,10 +23,10 @@ APP_NAME="ScreenTap"
 BUILD_DIR="$ROOT/.build/$CONFIG"
 APP_BUNDLE="$ROOT/build/$APP_NAME.app"
 
-echo "==> Сборка ($CONFIG)"
+echo "==> Building ($CONFIG)"
 swift build -c "$CONFIG"
 
-echo "==> Сборка бандла $APP_NAME.app"
+echo "==> Assembling $APP_NAME.app"
 rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
@@ -37,21 +37,19 @@ cp "$ROOT/Scripts/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
 if [[ -f "$ROOT/Resources/AppIcon.icns" ]]; then
     cp "$ROOT/Resources/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
 else
-    echo "    ! Resources/AppIcon.icns не найден — приложение соберётся без иконки"
+    echo "    ! Resources/AppIcon.icns is missing — the app will be built without an icon"
 fi
 
-# Права на исполняемый файл
 chmod +x "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
 IDENTITY="${SCREENTAP_CODESIGN_IDENTITY:--}"
-echo "==> Подпись ($IDENTITY)"
+echo "==> Signing ($IDENTITY)"
 codesign --force --deep --sign "$IDENTITY" --options runtime "$APP_BUNDLE" 2>/dev/null \
     || codesign --force --deep --sign "$IDENTITY" "$APP_BUNDLE"
 
-# Проверка, что бандл валиден
 codesign --verify --verbose=1 "$APP_BUNDLE" 2>&1 | sed 's/^/    /' || true
 
 echo
-echo "Готово: $APP_BUNDLE"
-echo "Запуск:  open '$APP_BUNDLE'"
-echo "Перенос в /Applications:  cp -R '$APP_BUNDLE' /Applications/"
+echo "Done: $APP_BUNDLE"
+echo "Run:     open '$APP_BUNDLE'"
+echo "Install: cp -R '$APP_BUNDLE' /Applications/"

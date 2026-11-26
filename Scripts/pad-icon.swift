@@ -1,9 +1,9 @@
 #!/usr/bin/env swift
 //
-// Размещает исходную иконку на прозрачном холсте 1024x1024 с полями,
-// как того требует macOS для иконок приложений.
+// Places the source icon on a transparent 1024x1024 canvas with the margins
+// macOS expects for application icons.
 //
-//   swift Scripts/pad-icon.swift <вход.png> <выход.png>
+//   swift Scripts/pad-icon.swift <input.png> <output.png>
 
 import AppKit
 import CoreGraphics
@@ -11,7 +11,7 @@ import Foundation
 
 let arguments = CommandLine.arguments
 guard arguments.count == 3 else {
-    FileHandle.standardError.write(Data("Использование: pad-icon.swift <вход> <выход>\n".utf8))
+    FileHandle.standardError.write(Data("Usage: pad-icon.swift <input> <output>\n".utf8))
     exit(2)
 }
 
@@ -20,11 +20,11 @@ let outputURL = URL(fileURLWithPath: arguments[2])
 
 guard let source = NSImage(contentsOf: inputURL),
       let sourceCG = source.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-    FileHandle.standardError.write(Data("Не удалось прочитать изображение \(inputURL.path)\n".utf8))
+    FileHandle.standardError.write(Data("Could not read the image \(inputURL.path)\n".utf8))
     exit(1)
 }
 
-// Каноническое полотно macOS — 1024x1024, сама иконка занимает ~82% полотна.
+// The canonical macOS canvas is 1024x1024, the icon itself takes ~82% of it.
 let canvasSize = 1024
 let insetRatio = 0.82
 let targetSize = CGFloat(canvasSize) * insetRatio
@@ -38,7 +38,7 @@ guard let context = CGContext(
     space: CGColorSpaceCreateDeviceRGB(),
     bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
 ) else {
-    FileHandle.standardError.write(Data("Не удалось создать графический контекст\n".utf8))
+    FileHandle.standardError.write(Data("Could not create the graphics context\n".utf8))
     exit(1)
 }
 
@@ -57,13 +57,13 @@ context.draw(
 )
 
 guard let output = context.makeImage() else {
-    FileHandle.standardError.write(Data("Не удалось получить итоговое изображение\n".utf8))
+    FileHandle.standardError.write(Data("Could not produce the final image\n".utf8))
     exit(1)
 }
 
 let rep = NSBitmapImageRep(cgImage: output)
 guard let png = rep.representation(using: .png, properties: [:]) else {
-    FileHandle.standardError.write(Data("Не удалось закодировать PNG\n".utf8))
+    FileHandle.standardError.write(Data("Could not encode the PNG\n".utf8))
     exit(1)
 }
 

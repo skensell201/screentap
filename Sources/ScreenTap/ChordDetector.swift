@@ -94,7 +94,7 @@ final class ChordDetector {
             callback: callback,
             userInfo: nil
         ) else {
-            Log.e("Не удалось создать CGEventTap — переключаюсь на мониторы событий")
+            Log.e("Could not create a CGEventTap — falling back to event monitors")
             installMonitors()
             return
         }
@@ -106,7 +106,7 @@ final class ChordDetector {
         self.tap = tap
         self.runLoopSource = source
         self.source = .eventTap
-        Log.d("Источник событий: CGEventTap")
+        Log.d("Event source: CGEventTap")
     }
 
     private func removeTap() {
@@ -126,7 +126,7 @@ final class ChordDetector {
         }
 
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            Log.d("Тап был отключён системой — включаю обратно")
+            Log.d("The tap was disabled by the system — enabling it again")
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             return Unmanaged.passUnretained(event)
         }
@@ -173,7 +173,7 @@ final class ChordDetector {
         }
 
         source = .eventMonitor
-        Log.d("Источник событий: NSEvent monitors (без подавления контекстного меню)")
+        Log.d("Event source: NSEvent monitors (no context menu suppression)")
     }
 
     private func removeMonitors() {
@@ -184,33 +184,28 @@ final class ChordDetector {
     }
 
     private func handleMonitorEvent(_ event: NSEvent) {
-        Log.d("Событие монитора: \(event.type.rawValue)")
+        Log.d("Monitor event: \(event.type.rawValue)")
         guard !isSuspended else { return }
         let now = CACurrentMediaTime()
         let location = event.locationInWindow
-        let button: MouseButton
         let directive: ChordDirective
 
         switch event.type {
         case .leftMouseDown:
-            button = .left
-            directive = machine.buttonDown(button, at: now, location: location)
+            directive = machine.buttonDown(.left, at: now, location: location)
         case .rightMouseDown:
-            button = .right
-            directive = machine.buttonDown(button, at: now, location: location)
+            directive = machine.buttonDown(.right, at: now, location: location)
         case .leftMouseUp:
-            button = .left
-            directive = machine.buttonUp(button, at: now, location: location)
+            directive = machine.buttonUp(.left, at: now, location: location)
         case .rightMouseUp:
-            button = .right
-            directive = machine.buttonUp(button, at: now, location: location)
+            directive = machine.buttonUp(.right, at: now, location: location)
         default:
             return
         }
 
         switch directive {
         case .chordCompleted:
-            Log.d("Жест распознан")
+            Log.d("Gesture recognised")
             onChord?()
         default:
             break
@@ -228,7 +223,7 @@ final class ChordDetector {
             return nil
 
         case .armChord:
-            Log.d("Жест: обе кнопки нажаты")
+            Log.d("Gesture: both buttons are down")
             bufferedRightEvent = nil
             return nil
 
@@ -237,7 +232,7 @@ final class ChordDetector {
             return Unmanaged.passUnretained(event)
 
         case .chordCompleted:
-            Log.d("Жест: обе кнопки отпущены")
+            Log.d("Gesture: both buttons are up")
             bufferedRightEvent = nil
             DispatchQueue.main.async { [weak self] in
                 self?.onChord?()
@@ -252,7 +247,7 @@ final class ChordDetector {
         event.setIntegerValueField(.eventSourceUserData, value: ChordDetector.repostMarker)
         event.timestamp = mach_absolute_time()
         event.post(tap: .cghidEventTap)
-        Log.d("Правый клик возвращён в систему")
+        Log.d("The right click was handed back to the system")
     }
 
     private func startTickTimer() {

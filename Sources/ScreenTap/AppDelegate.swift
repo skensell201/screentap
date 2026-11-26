@@ -35,7 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             scheduleDemo()
         }
 
-        Log.d("ScreenTap запущен")
+        Log.d("ScreenTap started")
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -60,7 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "ScreenTap")
         statusItem.button?.image?.isTemplate = true
-        statusItem.button?.toolTip = "ScreenTap — двойное нажатие обеими кнопками мыши"
+        statusItem.button?.toolTip = "ScreenTap — press both mouse buttons to capture an area"
         statusItem.menu = buildMenu()
     }
 
@@ -68,34 +68,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let menu = NSMenu()
         menu.delegate = self
 
-        let select = NSMenuItem(title: "Выделить область на экране", action: #selector(manualSelection), keyEquivalent: "")
+        let select = NSMenuItem(title: "Select Screen Area…", action: #selector(manualSelection), keyEquivalent: "")
         select.target = self
         menu.addItem(select)
 
         menu.addItem(.separator())
 
-        let login = NSMenuItem(title: "Запускать при входе", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
+        let login = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
         login.target = self
         login.state = launchAgent.isEnabled ? .on : .off
         menu.addItem(login)
 
         menu.addItem(.separator())
 
-        let screen = NSMenuItem(title: "Разрешение «Запись экрана»…", action: #selector(openScreenRecordingSettings), keyEquivalent: "")
+        let screen = NSMenuItem(title: "Screen Recording Permission…", action: #selector(openScreenRecordingSettings), keyEquivalent: "")
         screen.target = self
         menu.addItem(screen)
 
-        let accessibility = NSMenuItem(title: "Разрешение «Универсальный доступ»…", action: #selector(openAccessibilitySettings), keyEquivalent: "")
+        let accessibility = NSMenuItem(title: "Accessibility Permission…", action: #selector(openAccessibilitySettings), keyEquivalent: "")
         accessibility.target = self
         menu.addItem(accessibility)
 
         menu.addItem(.separator())
 
-        let about = NSMenuItem(title: "О ScreenTap", action: #selector(showAbout), keyEquivalent: "")
+        let about = NSMenuItem(title: "About ScreenTap", action: #selector(showAbout), keyEquivalent: "")
         about.target = self
         menu.addItem(about)
 
-        let quit = NSMenuItem(title: "Выход", action: #selector(quit), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
 
@@ -119,11 +119,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         if !screenOK {
-            statusItem.button?.toolTip = "ScreenTap — требуется разрешение «Запись экрана»"
+            statusItem.button?.toolTip = "ScreenTap — the “Screen Recording” permission is required"
         } else if !accessibilityOK {
-            statusItem.button?.toolTip = "ScreenTap — без «Универсального доступа» будет мешать контекстное меню"
+            statusItem.button?.toolTip = "ScreenTap — without Accessibility the context menu will pop up"
         } else {
-            statusItem.button?.toolTip = "ScreenTap — двойное нажатие обеими кнопками мыши"
+            statusItem.button?.toolTip = "ScreenTap — press both mouse buttons to capture an area"
         }
 
         if !didAskForPermissions && (!screenOK || !accessibilityOK) && !isDemoMode {
@@ -134,28 +134,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func presentPermissionHint(screenOK: Bool, accessibilityOK: Bool) {
         let alert = NSAlert()
-        alert.messageText = "ScreenTap почти готов к работе"
+        alert.messageText = "ScreenTap is almost ready"
 
         var lines: [String] = []
         if !screenOK {
             lines.append("""
-            • «Запись экрана» — без неё снимок экрана сделать невозможно.
-              Система спросит об этом сама при первом снимке, либо включите вручную:
-              «Системные настройки → Конфиденциальность и безопасность → Запись экрана».
+            • “Screen Recording” is required to capture the screen contents.
+              macOS asks for it the first time a screenshot is taken; you can also
+              enable it manually in
+              “System Settings → Privacy & Security → Screen Recording”.
             """)
         }
         if !accessibilityOK {
             lines.append("""
-            • «Универсальный доступ» — чтобы перехватывать нажатия обеих кнопок и
-              не показывать контекстное меню приложения под курсором.
-              «Системные настройки → Конфиденциальность и безопасность → Универсальный доступ».
+            • “Accessibility” lets ScreenTap intercept the presses of both mouse
+              buttons without letting the context menu of the app under the cursor
+              appear. Enable it in
+              “System Settings → Privacy & Security → Accessibility”.
             """)
         }
 
         alert.informativeText = lines.joined(separator: "\n")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Открыть настройки")
-        alert.addButton(withTitle: "Позже")
+        alert.addButton(withTitle: "Open Settings")
+        alert.addButton(withTitle: "Later")
 
         if alert.runModal() == .alertFirstButtonReturn {
             if !screenOK { Permissions.openScreenRecordingSettings() }
@@ -177,8 +179,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             do {
                 try launchAgent.enable(executablePath: executable)
             } catch {
-                Log.e("Не удалось включить автозапуск: \(error.localizedDescription)")
-                presentError(title: "Не удалось включить автозапуск", message: error.localizedDescription)
+                Log.e("Could not enable launch at login: \(error.localizedDescription)")
+                presentError(title: "Could not enable launch at login", message: error.localizedDescription)
             }
         }
     }
@@ -195,11 +197,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let alert = NSAlert()
         alert.messageText = "ScreenTap \(version)"
         alert.informativeText = """
-        Нажмите одновременно обе основные кнопки мыши — появится режим выделения области.
-        Выделенный фрагмент автоматически попадёт в буфер обмена.
+        Press both mouse buttons at the same time to open the area selection mode.
+        The captured region is copied to the clipboard right away.
 
-        Выделение: протяните мышь. Enter — подтвердить, Esc — отменить.
-        Клик без перетаскивания выделяет весь экран.
+        Selection: drag with the mouse. Enter confirms, Esc cancels.
+        A click without dragging selects the whole screen.
         """
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
@@ -242,15 +244,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     let image = try await self.capturer.capture(region: rect)
                     if self.isDemoMode {
                         ClipboardWriter.write(image, alsoSaveTo: "/tmp/screentap-demo.png")
-                        Log.d("DEMO: снимок сохранён в /tmp/screentap-demo.png (\(image.width)×\(image.height))")
+                        Log.d("DEMO: screenshot saved to /tmp/screentap-demo.png (\(image.width)×\(image.height))")
                     } else {
                         ClipboardWriter.write(image)
                     }
                     FeedbackSound.playSuccess()
                 } catch {
-                    Log.e("Ошибка захвата: \(error.localizedDescription)")
+                    Log.e("Capture failed: \(error.localizedDescription)")
                     FeedbackSound.playFailure()
-                    self.presentError(title: "Не удалось сделать снимок", message: error.localizedDescription)
+                    self.presentError(title: "Could not take the screenshot", message: error.localizedDescription)
                 }
             }
         }
@@ -277,7 +279,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 width: size.width,
                 height: size.height
             )
-            Log.d("DEMO: программный прогон выделения")
+            Log.d("DEMO: running a scripted selection")
             self.overlay.begin(presetGlobalRect: rect, autoConfirm: 0.8)
         }
     }

@@ -10,7 +10,7 @@ enum SelfTest {
             let ok = actual == expected
             if !ok {
                 failures += 1
-                print("✗ \(name): ожидалось \(expected.map { "\($0)" } ?? "nil"), получено \(actual.map { "\($0)" } ?? "nil")")
+                print("✗ \(name): expected \(expected.map { "\($0)" } ?? "nil"), got \(actual.map { "\($0)" } ?? "nil")")
             } else {
                 print("✓ \(name)")
             }
@@ -19,101 +19,101 @@ enum SelfTest {
         let origin = CGPoint(x: 100, y: 100)
         let moved = CGPoint(x: 400, y: 300)
 
-        // 1. Обычный клик левой кнопкой.
+        // 1. A plain left click.
         do {
             var m = ChordStateMachine()
-            check("обычный клик левой кнопкой (down)", m.buttonDown(.left, at: 0, location: origin), .pass)
-            check("обычный клик левой кнопкой (up)", m.buttonUp(.left, at: 0.05, location: origin), .pass)
+            check("plain left click (down)", m.buttonDown(.left, at: 0, location: origin), .pass)
+            check("plain left click (up)", m.buttonUp(.left, at: 0.05, location: origin), .pass)
         }
 
-        // 2. Обычный правый клик: нажатие поглощается и возвращается в систему.
+        // 2. A plain right click: the press is swallowed and handed back.
         do {
             var m = ChordStateMachine()
-            check("правый клик (down поглощается)", m.buttonDown(.right, at: 0, location: origin), .swallow)
-            check("правый клик (up возвращает нажатие)", m.buttonUp(.right, at: 0.05, location: origin), .repostBufferedDown)
+            check("right click (down is swallowed)", m.buttonDown(.right, at: 0, location: origin), .swallow)
+            check("right click (up hands the press back)", m.buttonUp(.right, at: 0.05, location: origin), .repostBufferedDown)
         }
 
-        // 3. Правый клик с удержанием: возврат по таймеру.
+        // 3. A held right click: the press is handed back by the timer.
         do {
             var m = ChordStateMachine()
-            check("правый клик (down поглощается)", m.buttonDown(.right, at: 0, location: origin), .swallow)
-            check("правый клик (таймер возвращает нажатие)", m.tick(now: 0.30), .repostBufferedDown)
+            check("right click (down is swallowed)", m.buttonDown(.right, at: 0, location: origin), .swallow)
+            check("right click (timer hands the press back)", m.tick(now: 0.30), .repostBufferedDown)
         }
 
-        // 4. Жест левой кнопкой вперёд.
+        // 4. The gesture, left button first.
         do {
             var m = ChordStateMachine()
-            check("chord слева: left down", m.buttonDown(.left, at: 0, location: origin), .pass)
-            check("chord слева: right down", m.buttonDown(.right, at: 0.05, location: origin), .armChord)
-            check("chord слева: left up", m.buttonUp(.left, at: 0.10, location: origin), .swallow)
-            check("chord слева: right up", m.buttonUp(.right, at: 0.15, location: origin), .chordCompleted)
+            check("chord, left first: left down", m.buttonDown(.left, at: 0, location: origin), .pass)
+            check("chord, left first: right down", m.buttonDown(.right, at: 0.05, location: origin), .armChord)
+            check("chord, left first: left up", m.buttonUp(.left, at: 0.10, location: origin), .swallow)
+            check("chord, left first: right up", m.buttonUp(.right, at: 0.15, location: origin), .chordCompleted)
         }
 
-        // 5. Жест правой кнопкой вперёд.
+        // 5. The gesture, right button first.
         do {
             var m = ChordStateMachine()
-            check("chord справа: right down", m.buttonDown(.right, at: 0, location: origin), .swallow)
-            check("chord справа: left down", m.buttonDown(.left, at: 0.05, location: origin), .armChord)
-            check("chord справа: right up", m.buttonUp(.right, at: 0.10, location: origin), .swallow)
-            check("chord справа: left up", m.buttonUp(.left, at: 0.15, location: origin), .chordCompleted)
+            check("chord, right first: right down", m.buttonDown(.right, at: 0, location: origin), .swallow)
+            check("chord, right first: left down", m.buttonDown(.left, at: 0.05, location: origin), .armChord)
+            check("chord, right first: right up", m.buttonUp(.right, at: 0.10, location: origin), .swallow)
+            check("chord, right first: left up", m.buttonUp(.left, at: 0.15, location: origin), .chordCompleted)
         }
 
-        // 6. Жест последовательными кликами.
+        // 6. The gesture as two consecutive clicks.
         do {
             var m = ChordStateMachine()
-            check("chord кликами: left down", m.buttonDown(.left, at: 0, location: origin), .pass)
-            check("chord кликами: left up", m.buttonUp(.left, at: 0.05, location: origin), .pass)
-            check("chord кликами: right down", m.buttonDown(.right, at: 0.10, location: origin), .armChord)
-            check("chord кликами: right up", m.buttonUp(.right, at: 0.15, location: origin), .chordCompleted)
+            check("chord by clicks: left down", m.buttonDown(.left, at: 0, location: origin), .pass)
+            check("chord by clicks: left up", m.buttonUp(.left, at: 0.05, location: origin), .pass)
+            check("chord by clicks: right down", m.buttonDown(.right, at: 0.10, location: origin), .armChord)
+            check("chord by clicks: right up", m.buttonUp(.right, at: 0.15, location: origin), .chordCompleted)
         }
 
-        // 7. Перетаскивание мышью не считается жестом.
+        // 7. Dragging the mouse is not a gesture.
         do {
             var m = ChordStateMachine()
             check("drag: left down", m.buttonDown(.left, at: 0, location: origin), .pass)
-            check("drag: left up (смещение)", m.buttonUp(.left, at: 0.30, location: moved), .pass)
-            check("drag: right down не жест", m.buttonDown(.right, at: 0.35, location: moved), .swallow)
+            check("drag: left up (pointer moved)", m.buttonUp(.left, at: 0.30, location: moved), .pass)
+            check("drag: right down is not a gesture", m.buttonDown(.right, at: 0.35, location: moved), .swallow)
         }
 
-        // 8. Правый клик сильно позже левого — не жест.
+        // 8. A right click much later than the left one is not a gesture.
         do {
             var m = ChordStateMachine()
-            check("медленный правый клик: left down", m.buttonDown(.left, at: 0, location: origin), .pass)
-            check("медленный правый клик: left up", m.buttonUp(.left, at: 0.05, location: origin), .pass)
-            check("медленный правый клик: right down не жест", m.buttonDown(.right, at: 1.0, location: origin), .swallow)
+            check("slow right click: left down", m.buttonDown(.left, at: 0, location: origin), .pass)
+            check("slow right click: left up", m.buttonUp(.left, at: 0.05, location: origin), .pass)
+            check("slow right click: right down is not a gesture", m.buttonDown(.right, at: 1.0, location: origin), .swallow)
         }
 
-        // 9. Долгое удержание левой кнопки — не жест.
+        // 9. Holding the left button for a long time is not a gesture.
         do {
             var m = ChordStateMachine()
-            check("долгое удержание: left down", m.buttonDown(.left, at: 0, location: origin), .pass)
-            check("долгое удержание: right down не жест", m.buttonDown(.right, at: 1.0, location: origin), .swallow)
+            check("long hold: left down", m.buttonDown(.left, at: 0, location: origin), .pass)
+            check("long hold: right down is not a gesture", m.buttonDown(.right, at: 1.0, location: origin), .swallow)
         }
 
-        // 10. После жеста состояние сбрасывается.
+        // 10. The state is reset after a gesture.
         do {
             var m = ChordStateMachine()
             _ = m.buttonDown(.left, at: 0, location: origin)
             _ = m.buttonDown(.right, at: 0.05, location: origin)
             _ = m.buttonUp(.left, at: 0.10, location: origin)
             _ = m.buttonUp(.right, at: 0.15, location: origin)
-            check("после жеста: обычный клик", m.buttonDown(.left, at: 1.0, location: origin), .pass)
-            check("после жеста: обычный правый клик", m.buttonDown(.right, at: 1.5, location: origin), .swallow)
-            check("после жеста: правый клик возвращается", m.buttonUp(.right, at: 1.55, location: origin), .repostBufferedDown)
+            check("after the gesture: plain click", m.buttonDown(.left, at: 1.0, location: origin), .pass)
+            check("after the gesture: plain right click", m.buttonDown(.right, at: 1.5, location: origin), .swallow)
+            check("after the gesture: the right click is handed back", m.buttonUp(.right, at: 1.55, location: origin), .repostBufferedDown)
         }
 
-        // 11. Средняя кнопка никогда не участвует в жесте.
+        // 11. The middle button never takes part in the gesture.
         do {
             var m = ChordStateMachine()
-            check("средняя кнопка: down", m.buttonDown(.other, at: 0, location: origin), .pass)
-            check("средняя кнопка: up", m.buttonUp(.other, at: 0.05, location: origin), .pass)
+            check("middle button: down", m.buttonDown(.other, at: 0, location: origin), .pass)
+            check("middle button: up", m.buttonUp(.other, at: 0.05, location: origin), .pass)
         }
 
         print("")
         if failures == 0 {
-            print("Все проверки пройдены.")
+            print("All checks passed.")
         } else {
-            print("Провалено проверок: \(failures)")
+            print("Failed checks: \(failures)")
         }
         return failures == 0 ? 0 : 1
     }

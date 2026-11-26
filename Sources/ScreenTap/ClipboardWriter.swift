@@ -8,7 +8,7 @@ enum ClipboardWriter {
     static func write(_ image: CGImage) -> Bool {
         let rep = NSBitmapImageRep(cgImage: image)
         guard let png = rep.representation(using: .png, properties: [:]) else {
-            Log.e("Не удалось закодировать PNG")
+            Log.e("Could not encode the image as PNG")
             return false
         }
 
@@ -21,7 +21,7 @@ enum ClipboardWriter {
             pasteboard.setData(tiff, forType: .tiff)
         }
 
-        Log.d("Скриншот (\(image.width)×\(image.height)) помещён в буфер обмена")
+        Log.d("Screenshot (\(image.width)×\(image.height)) copied to the clipboard")
         return true
     }
 

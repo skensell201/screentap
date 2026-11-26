@@ -29,9 +29,9 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSScreenCaptureUsageDescription</key>
-	<string>ScreenTap делает снимок выделенной области экрана и помещает его в буфер обмена.</string>
+	<string>ScreenTap captures a screenshot of the selected screen area and copies it to the clipboard.</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>ScreenTap не взаимодействует с другими приложениями.</string>
+	<string>ScreenTap does not interact with other applications.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>MIT License</string>
 </dict>

@@ -1,158 +1,162 @@
-# ScreenTap — дизайн
+# ScreenTap — Design
 
-**Дата:** 2026-11-26
-**Статус:** согласован с пользователем (нативное Swift-приложение, активация после отпускания кнопок, буфер + звук, меню-баре с автозапуском)
+**Date:** 2026-11-26
+**Status:** agreed with the user (native Swift app, activation after both buttons are released,
+clipboard plus sound, menu bar app with launch at login)
 
-## 1. Цель
+## 1. Goal
 
-Утилита для macOS: одновременное нажатие **обеих** основных кнопок мыши открывает режим
-выделения области экрана; после выделения фрагмент сразу попадает в буфер обмена.
+A macOS utility: pressing **both** main mouse buttons at the same time opens an area
+selection mode; once the area is confirmed, the fragment goes straight into the clipboard.
 
-Главный сценарий: пользователь не отпускает руку от мыши и не выходит из текущего приложения.
+The main scenario: the user never has to let go of the mouse and never has to leave the
+application they are working in.
 
-## 2. Требования (из ответов пользователя)
+## 2. Requirements (from the user's answers)
 
-| # | Требование | Решение |
+| # | Requirement | Decision |
 |---|---|---|
-| R1 | Формат поставки | Нативное `.app` на Swift / AppKit, без внешних зависимостей |
-| R2 | Момент активации | После отпускания обеих кнопок (не в момент нажатия) |
-| R3 | Результат | Только буфер обмена + короткий звуковой сигнал (без сохранения файлов) |
-| R4 | Запуск | Иконка в меню-баре + автозапуск при входе |
-| R5 | Дополнительно | Публичный репозиторий, внятный README, иконка приложения |
+| R1 | Deliverable format | Native `.app` written in Swift / AppKit, no external dependencies |
+| R2 | When the mode opens | After both buttons are released, not when the second one goes down |
+| R3 | Result | Clipboard only plus a short sound, no files are written |
+| R4 | Startup | Menu bar icon plus launch at login |
+| R5 | Extras | Public repository, a proper README, an app icon |
 
-## 3. Архитектура
+## 3. Architecture
 
-Пять модулей с однозначной ответственностью:
+Five modules with one responsibility each:
 
 ```
-ChordDetector ──► ChordStateMachine (чистая логика, тестируемая)
+ChordDetector ──► ChordStateMachine (pure logic, testable)
       │
       ▼
 SelectionOverlay ──► ScreenCapturer ──► ClipboardWriter ──► FeedbackSound
 ```
 
-### 3.1 `ChordStateMachine` (чистая, без AppKit)
+### 3.1 `ChordStateMachine` (pure, no AppKit)
 
-Вход: `buttonDown(button, time)`, `buttonUp(button, time)`, `tick(now)`.
-Выход: директива — `.pass`, `.swallow`, `.armChord`, `.repostBufferedDown`, `.chordCompleted`.
+Input: `buttonDown(button, time)`, `buttonUp(button, time)`, `tick(now)`.
+Output: a directive — `.pass`, `.swallow`, `.armChord`, `.repostBufferedDown`, `.chordCompleted`.
 
-Правила распознавания «chord»:
+Rules for recognising the gesture:
 
-* **Overlap** (основной): вторая кнопка нажата, пока первая ещё удерживается, и между
-  нажатиями ≤ `window` (200 мс).
-* **Sequence** (дополнительный): первая кнопка была быстрым кликом без перемещения
-  (> 10 pt отклонение = drag → режим не применяется), а вторая нажата в пределах 200 мс
-  от первого нажатия. Снижает ложные срабатывания при быстром перетаскивании текста.
+* **Overlap** (primary): the second button goes down while the first one is still held, and no
+  more than `window` (200 ms) has passed since the first press.
+* **Sequence** (secondary): the first button was a quick click without pointer travel (more
+  than 10 pt of movement counts as a drag and disables this mode) and the second button goes
+  down within 200 ms of that click. This keeps fast text selection from firing the gesture.
 
-Сброс состояния происходит после отпускания всех кнопок.
+The state is reset once all buttons are released.
 
-### 3.2 `ChordDetector` (источник событий)
+### 3.2 `ChordDetector` (event source)
 
-Два источника, выбираются динамически:
+Two sources, selected dynamically:
 
-1. **CGEventTap** (основной) — требует разрешения «Универсальный доступ»:
-   * левая кнопка пробрасывается немедленно (без задержки клика по всей системе);
-   * правая кнопка **всегда** поглощается и буферизуется; если chord не подтвердился,
-     событие переинжектируется через `CGEvent.post` с обновлённой меткой времени —
-     контекстное меню открывается лишь на ~200 мс позже;
-   * при подтверждении chord поглощаются события обеих кнопок, поэтому контекстное меню
-     не появляется вовсе;
-   * переинжектированные события помечаются `eventSourceUserData` magic-значением,
-     чтобы не попасть в собственный tap повторно.
-2. **NSEvent global/local monitors** (fallback без «Универсального доступа») —
-   работает всегда, но не может подавить контекстное меню.
+1. **CGEventTap** (primary) — requires the "Accessibility" permission:
+   * the left button is passed through immediately (no click latency anywhere in the system);
+   * the right button is **always swallowed and buffered**; if no gesture follows, the event is
+     re-injected through `CGEvent.post` with an updated timestamp, so the context menu opens
+     about 200 ms later;
+   * once the gesture is confirmed, the events of both buttons are swallowed and the context
+     menu never appears;
+   * re-injected events carry a magic `eventSourceUserData` value so that they are not
+     processed by our own tap a second time.
+2. **NSEvent global/local monitors** (fallback without Accessibility) — always available, but
+   they cannot suppress anything.
 
-Известный компромисс: если пользователь начинает жест **с левой** кнопки, она успевает
-дойти до приложения под курсором (событие нельзя отозвать) — возможен единичный «лишний»
-клик. Жест, начатый с правой кнопки, чистый. Задерживать все левые клики на 200 мс, чтобы
-это убрать, нельзя: это ухудшит отзывчивость системы.
+Known trade-off: if the user starts the gesture **with the left button**, that button has
+already reached the application under the cursor (a delivered event cannot be recalled), so a
+single stray click may happen. A gesture that starts with the right button is clean. Delaying
+every left click by 200 ms to avoid this would degrade the responsiveness of the whole system.
 
 ### 3.3 `SelectionOverlay`
 
-Одно безрамочное окно уровня `.screen`, покрывающее union всех дисплеев
+One borderless window at level `.overlayWindow` that covers the union of all displays
 (`collectionBehavior`: `.canJoinAllSpaces`, `.fullScreenAuxiliary`, `.stationary`).
 
-* Затемнение: до начала выделения — весь экран; во время выделения — 4 прямоугольника
-  вокруг выбранной области (без blend-режимов, только обычная отрисовка).
-* Перекрестие, рамка выделения, HUD с текущим размером «W × H».
-* Управление: drag = выделение, `Enter`/`Space` = подтвердить, `Esc` = отмена.
-* Клик без перетаскивания (< 4 pt) = выделение экрана под курсором (как в системном
-  инструменте снимка экрана).
-* После подтверждения окно скрывается, ~120 мс паузы (чтобы оверлей не попал в кадр),
-  затем захват и копирование.
+* Dimming: the whole screen before the selection starts, and four rectangles around the
+  selection while dragging (plain drawing, no blend modes).
+* Crosshair, selection frame, corner handles, HUD with the live size.
+* Controls: drag to select, `Enter`/`Space` to confirm, `Esc` to cancel.
+* A click without dragging (less than 4 pt) selects the whole screen under the cursor, like
+  the system screenshot tool does.
+* After confirmation the window is hidden, the app waits ~120 ms so that the overlay does not
+  end up in the frame, then captures and copies.
 
 ### 3.4 `ScreenCapturer`
 
-Основной путь — `SCScreenshotManager.captureImage(contentFilter:configuration:)`
-(macOS 14+): захват дисплея целиком через `SCContentFilter(display:rect:.null)`,
-затем кадрирование в пикселях. Такой порядок исключает ошибки в системе координат
-между Cocoa (y вверх) и растровым изображением (y вниз).
+Primary path: `SCScreenshotManager.captureImage(contentFilter:configuration:)` (macOS 14+).
+The whole display is captured through `SCContentFilter(display:excludingWindows:)` and the
+region is cropped afterwards in pixels. Capturing the full display first avoids the
+coordinate-system mismatch between Cocoa (y up) and the bitmap (y down).
 
-* Выбор дисплея — по максимальной площади пересечения с областью выделения.
-* Масштаб вычисляется как `image.width / screen.frame.width`, поэтому Retina и внешние
-  мониторы обрабатываются одинаково.
-* Fallback: `CGWindowListCreateImage` (deprecated, но работает на части систем).
-* Требуется разрешение «Запись экрана».
+* The display is picked by the largest overlap with the selected region.
+* The scale is computed as `image.width / screen.frame.width`, so Retina and external
+  displays are handled the same way.
+* Fallback: `CGWindowListCreateImage` (deprecated, but still functional on some systems).
+* Requires the "Screen Recording" permission.
 
 ### 3.5 `ClipboardWriter`, `FeedbackSound`
 
-PNG-данные в `NSPasteboard.general` (плюс `NSImage`, чтобы вставка работала в любом
-приложении). Короткий системный звук — подтверждение успеха.
+PNG data goes into `NSPasteboard.general` (plus a TIFF representation, so that pasting works
+in every application). A short system sound confirms the result.
 
-### 3.6 `LaunchAgent`
+### 3.6 `LaunchAgentController`
 
-Автозапуск реализован через `~/Library/LaunchAgents/xyz.screentap.plist` + `launchctl
-bootstrap`. Выбран вместо `SMAppService.mainApp`, потому что последний требует
-устойчивой подписи приложения и размещения в `/Applications`, а ad-hoc подпись
-меняет TCC-идентичность при каждой пересборке.
+Launch at login is implemented through `~/Library/LaunchAgents/xyz.screentap.ScreenTap.plist`
+plus `launchctl bootstrap`. It was chosen over `SMAppService.mainApp` because the latter
+requires a stable signature and a fixed location in `/Applications`, while an ad-hoc signature
+changes the TCC identity on every rebuild.
 
-## 4. Права доступа
+## 4. Permissions
 
-| Разрешение | Зачем | Обязательно |
+| Permission | Why | Required |
 |---|---|---|
-| Запись экрана | Захват изображения дисплея | Да (без него функция не работает) |
-| Универсальный доступ | `CGEventTap` — перехват и подавление событий мыши | Нет, но без него появляется контекстное меню |
+| Screen Recording | Captures the image of the display | Yes — without it the app cannot work |
+| Accessibility | `CGEventTap` — intercepting and suppressing mouse events | No, but without it the context menu appears |
 
-Приложение проверяет разрешения при старте и по таймеру, показывает предупреждение в
-меню-баре и открывает нужную страницу System Settings.
+The app checks both permissions at startup and on a timer, shows a warning in the menu bar
+and opens the relevant System Settings page.
 
-## 5. Ошибки и отказы
+## 5. Failure modes
 
-| Ситуация | Поведение |
+| Situation | Behaviour |
 |---|---|
-| Нет разрешения «Запись экрана» | Иконка в меню-баре краснеет, меню предлагает открыть настройки; скриншот не делается |
-| Нет разрешения «Универсальный доступ» | Работает fallback-детектор; меню предупреждает |
-| Захват вернул пустой результат | Диалог с ошибкой, буфер не меняется |
-| Область меньше 4×4 pt | Выделение отменяется молча |
-| `Esc` во время выделения | Отмена, буфер не меняется |
+| No "Screen Recording" permission | The menu bar icon turns into a warning, the menu offers to open the settings, no screenshot is taken |
+| No "Accessibility" permission | The fallback detector works, the menu warns about it |
+| The capture returns an empty result | An error dialog is shown, the clipboard is left untouched |
+| The region is smaller than 4×4 pt | The selection is cancelled silently |
+| `Esc` during the selection | Cancelled, the clipboard is left untouched |
 
-## 6. Сборка
+## 6. Build
 
-* `swift build -c release` (SwiftPM) → бинарь.
-* `Scripts/build.sh` собирает `ScreenTap.app`: `Info.plist`, `Resources/AppIcon.icns`,
-  ad-hoc подпись (`codesign -s -`).
-* Стабильная подпись: если задан `SCREENTAP_CODESIGN_IDENTITY`, используется она —
-  тогда TCC-разрешение переживает пересборку.
+* `swift build -c release` (SwiftPM) produces the binary.
+* `Scripts/build.sh` assembles `ScreenTap.app`: `Info.plist`, `Resources/AppIcon.icns` and an
+  ad-hoc signature (`codesign -s -`).
+* A stable signature is possible: if `SCREENTAP_CODESIGN_IDENTITY` is set, that identity is
+  used, and the TCC permission then survives rebuilding the app.
 
-## 7. Тестирование
+## 7. Testing
 
-* `--selftest` — прогон `ChordStateMachine` по синтетическим последовательностям:
-  корректный chord, chord с обратным порядком, обычный клик, обычный правый клик,
-  drag с последующим правым кликом, chord с двумя кнопками подряд.
-* `--debug` — лог событий мыши и состояния машины в stdout.
-* `--demo` — программный прогон полного цикла: оверлей → выделение → захват →
-  буфер, результат сохраняется в файл для проверки.
+* `--selftest` runs the `ChordStateMachine` against synthetic event sequences: a correct
+  gesture, the gesture with the buttons swapped, a plain click, a plain right click, a drag
+  followed by a right click, and the state reset after a gesture.
+* `--debug` logs mouse events and machine state to stdout.
+* `--demo` runs the full cycle programmatically: overlay → selection → capture → clipboard,
+  with the result written to a file for inspection.
 
-## 8. Структура репозитория
+## 8. Repository layout
 
 ```
 ScreenTap/
-├── README.md                 # внятный README на русском
+├── README.md                 # proper README
 ├── LICENSE                   # MIT
 ├── Package.swift
-├── Sources/ScreenTap/        # исходники Swift
-├── Scripts/build.sh          # сборка .app
-├── Scripts/make-icon.sh      # генерация .icns из PNG
-├── Resources/AppIcon.icns    # иконка приложения
-└── docs/superpowers/specs/   # эта спецификация
+├── Sources/ScreenTap/        # Swift sources
+├── Scripts/build.sh          # builds the .app
+├── Scripts/make-icon.sh      # generates the .icns from a PNG
+├── Scripts/pad-icon.swift    # prepares the 1024x1024 icon canvas
+├── Scripts/render-preview.swift # renders the selection mode illustration
+├── Resources/AppIcon.icns    # app icon
+└── docs/superpowers/specs/   # this spec
 ```

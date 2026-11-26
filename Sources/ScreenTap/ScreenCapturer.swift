@@ -11,13 +11,13 @@ enum CaptureError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .screenRecordingDenied:
-            return "Нет доступа к записи экрана. Разрешите его в «Системных настройках → Конфиденциальность и безопасность → Запись экрана»."
+            return "No screen recording permission. Enable it in “System Settings → Privacy & Security → Screen Recording”."
         case .noDisplay:
-            return "Не удалось определить дисплей для выделенной области."
+            return "Could not determine the display that holds the selected area."
         case .captureFailed:
-            return "Не удалось захватить изображение экрана."
+            return "Could not capture the screen contents."
         case .emptyRegion:
-            return "Выделенная область оказалась пустой."
+            return "The selected area turned out to be empty."
         }
     }
 }
@@ -34,7 +34,7 @@ final class ScreenCapturer {
                 let image = try await captureWithScreenCaptureKit(screen: screen)
                 return try crop(image, region: region, screen: screen)
             } catch {
-                Log.e("ScreenCaptureKit не сработал (\(error.localizedDescription)) — пробую запасной путь")
+                Log.e("ScreenCaptureKit failed (\(error.localizedDescription)) — trying the fallback path")
             }
         }
 
@@ -69,7 +69,7 @@ final class ScreenCapturer {
 
         let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
         guard image.width > 0, image.height > 0 else { throw CaptureError.captureFailed }
-        Log.d("SCK вернул изображение \(image.width)×\(image.height), экран \(Int(screen.frame.width))×\(Int(screen.frame.height))")
+        Log.d("SCK returned \(image.width)×\(image.height) for a \(Int(screen.frame.width))×\(Int(screen.frame.height)) screen")
         return image
     }
 
@@ -101,7 +101,7 @@ final class ScreenCapturer {
             height: region.height * scaleY
         )
         cropRect = cropRect.intersection(CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        Log.d("Кадрирование: масштаб \(scaleX)×\(scaleY), прямоугольник \(cropRect)")
+        Log.d("Cropping: scale \(scaleX)×\(scaleY), rect \(cropRect)")
 
         guard cropRect.width >= 1, cropRect.height >= 1, let cropped = image.cropping(to: cropRect) else {
             throw CaptureError.emptyRegion
