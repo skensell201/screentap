@@ -1,0 +1,14 @@
+# Сборка SwiftPM
+.build/
+.swiftpm/
+
+# Готовый бандл приложения
+build/
+
+# macOS
+.DS_Store
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
