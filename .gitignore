@@ -12,3 +12,6 @@ build/
 *.xcodeproj/
 *.xcworkspace/
 xcuserdata/
+
+# Готовые сборки и архивы
+ScreenTap.zip
