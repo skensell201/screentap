@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Build
+        run: swift build -c release
+
+      - name: Run state machine self test
+        run: ./.build/release/ScreenTap --selftest
+
+      - name: Assemble app bundle
+        run: ./Scripts/build.sh
+
+      - name: Upload ScreenTap.app
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScreenTap.app
+          path: build/ScreenTap.app
