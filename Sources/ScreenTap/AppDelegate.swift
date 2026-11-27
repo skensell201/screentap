@@ -71,6 +71,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.button?.image?.isTemplate = true
         statusItem.button?.toolTip = "ScreenTap — press both mouse buttons to capture an area"
         statusItem.menu = buildMenu()
+
+        // The menu bar lays the item out asynchronously, so report its final frame
+        // a moment later.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            Log.d("Status item window frame (settled): \(self?.statusItem.button?.window?.frame ?? .zero)")
+        }
     }
 
     private func buildMenu() -> NSMenu {
@@ -128,6 +134,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             image.isTemplate = true
             statusItem.button?.image = image
             Log.d("Status item symbol \"\(symbol)\", size \(image.size), screen recording: \(screenOK), accessibility: \(accessibilityOK)")
+            Log.d("Status item window frame: \(statusItem.button?.window?.frame ?? .zero)")
         } else {
             Log.e("SF Symbol \"\(symbol)\" is not available")
         }
