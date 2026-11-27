@@ -98,7 +98,7 @@ ChordDetector ──► ChordStateMachine ──► SelectionOverlay ──► S
 | `ChordStateMachine` | `ChordStateMachine.swift` | Pure state machine that turns a stream of button presses into a "gesture recognised" decision. Free of AppKit, so it is testable with synthetic events |
 | `ChordDetector` | `ChordDetector.swift` | Event source: `CGEventTap` (able to swallow events) or `NSEvent` monitors as a fallback |
 | `SelectionOverlay` | `SelectionOverlay.swift` | Full-screen selection window: dimming, frame, size HUD, keyboard handling |
-| `ScreenCapturer` | `ScreenCapturer.swift` | Capture via `ScreenCaptureKit` with cropping in points, fallback to `CGWindowListCreateImage` |
+| `ScreenCapturer` | `ScreenCapturer.swift` | Capture via `SCScreenshotManager.captureImage(in:)` (region in Quartz coordinates), with a `ScreenCaptureKit` + crop path for older systems and `CGWindowListCreateImage` as the last resort |
 | `ClipboardWriter` | `ClipboardWriter.swift` | PNG and TIFF into `NSPasteboard`, plus the sound feedback |
 | `LaunchAgentController` | `LaunchAgentController.swift` | Launch at login through `~/Library/LaunchAgents` |
 | `AppDelegate` | `AppDelegate.swift` | Menu bar, permissions, the overall flow |
@@ -113,8 +113,11 @@ Key decisions:
   support one gesture is not acceptable, so a gesture that *starts* with the left button may
   leave a single stray click in the application under the cursor. A gesture that starts with
   the right button is clean.
-- **Capturing happens at the native resolution of the display** (`CGDisplayCopyDisplayMode`)
-  instead of the default 1920×1080, which would stretch the picture and throw the cropping off.
+- **The region is captured directly** with `SCScreenshotManager.captureImage(in:)` (macOS
+  15.2+), which takes the rectangle in Quartz coordinates, works across multiple displays and
+  — unlike enumerating the on-screen content — does not make macOS ask for the screen
+  recording permission over and over. Older systems fall back to `ScreenCaptureKit` with a
+  manual crop, and finally to `CGWindowListCreateImage`.
 - **Launch at login uses a LaunchAgent** rather than `SMAppService`: it works no matter where
   the `.app` lives and does not require a permanent signature.
 
@@ -145,15 +148,31 @@ Useful flags:
   plain right click, the gesture in both orders, the gesture as two clicks, dragging, state
   reset) and exits with `0`/`1`.
 - `--demo` — scripted selection and capture; the result is written to `/tmp/screentap-demo.png`.
+- `--coord-test` — captures the top right corner of the screen (the menu bar clock) into
+  `/tmp/screentap/coordtest.png` to verify the coordinate conversion.
 
 ### Stable code signature (for permissions)
 
 By default the app is signed ad-hoc (`codesign -s -`). The TCC identity of an ad-hoc signed
-app changes with every rebuild, which means the screen recording permission has to be granted
-again. To avoid that, use your own self-signed identity:
+app changes with every rebuild, which means macOS asks for the screen recording permission
+again after each rebuild. To avoid that, sign the app with a certificate that has a stable
+code requirement:
 
 ```bash
+# One time: create a self-signed identity in a dedicated keychain
+./Scripts/setup-signing.sh
+
+# Every build
 SCREENTAP_CODESIGN_IDENTITY="ScreenTap SelfSigned" ./Scripts/build.sh
+```
+
+`build.sh` also picks up the identity automatically when it is stored in the local
+`.signing-identity` file (git ignored) or when a "ScreenTap SelfSigned" identity is present in
+the keychain. Any other code signing identity works as well — for example an Apple
+Development certificate that is already on the machine:
+
+```bash
+echo "Apple Development: you@example.com (XXXX)" > .signing-identity
 ```
 
 ### Repository layout
@@ -161,6 +180,7 @@ SCREENTAP_CODESIGN_IDENTITY="ScreenTap SelfSigned" ./Scripts/build.sh
 ```
 Sources/ScreenTap/     Swift sources
 Scripts/build.sh       builds ScreenTap.app
+Scripts/setup-signing.sh creates a stable self-signed signing identity
 Scripts/make-icon.sh   generates AppIcon.icns from a PNG
 Scripts/pad-icon.swift prepares the 1024x1024 icon canvas
 Scripts/render-preview.swift renders the selection mode illustration

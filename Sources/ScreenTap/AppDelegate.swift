@@ -11,6 +11,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private var isDemoMode: Bool { CommandLine.arguments.contains("--demo") }
 
+    /// Debug modes that must not block on the permission dialog.
+    private var isSilentMode: Bool {
+        isDemoMode || CommandLine.arguments.contains("--coord-test")
+    }
+
     // MARK: - Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -33,6 +38,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if isDemoMode {
             scheduleDemo()
+        }
+
+        if CommandLine.arguments.contains("--coord-test") {
+            runCoordinateTest()
         }
 
         Log.d("ScreenTap started")
@@ -112,10 +121,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         detector.refreshSource()
 
-        let symbol = (screenOK && accessibilityOK) ? "camera.viewfinder" : "camera.viewfinder.badge.exclamationmark"
+        // "camera.viewfinder.badge.exclamationmark" does not exist in SF Symbols,
+        // so the warning state uses a plain triangle.
+        let symbol = (screenOK && accessibilityOK) ? "camera.viewfinder" : "exclamationmark.triangle.fill"
         if let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "ScreenTap") {
             image.isTemplate = true
             statusItem.button?.image = image
+            Log.d("Status item symbol \"\(symbol)\", size \(image.size), screen recording: \(screenOK), accessibility: \(accessibilityOK)")
+        } else {
+            Log.e("SF Symbol \"\(symbol)\" is not available")
         }
 
         if !screenOK {
@@ -126,7 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             statusItem.button?.toolTip = "ScreenTap — press both mouse buttons to capture an area"
         }
 
-        if !didAskForPermissions && (!screenOK || !accessibilityOK) && !isDemoMode {
+        if !didAskForPermissions && (!screenOK || !accessibilityOK) && !isSilentMode {
             didAskForPermissions = true
             presentPermissionHint(screenOK: screenOK, accessibilityOK: accessibilityOK)
         }
@@ -158,6 +172,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.alertStyle = .informational
         alert.addButton(withTitle: "Open Settings")
         alert.addButton(withTitle: "Later")
+
+        // The app may have been started in the background (login item), so bring
+        // the dialog to the front before showing it.
+        NSApp.activate(ignoringOtherApps: true)
 
         if alert.runModal() == .alertFirstButtonReturn {
             if !screenOK { Permissions.openScreenRecordingSettings() }
@@ -268,6 +286,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     // MARK: - Demo
+
+    /// Captures the top right corner of the screen (the menu bar clock) and writes
+    /// it to a file. Used to verify the coordinate conversion of the capture.
+    private func runCoordinateTest() {
+        guard let screen = NSScreen.screens.first else { return }
+        let region = CGRect(
+            x: screen.frame.width - 420,
+            y: screen.frame.maxY - 70,
+            width: 420,
+            height: 70
+        )
+        Task {
+            do {
+                let image = try await capturer.capture(region: region)
+                let rep = NSBitmapImageRep(cgImage: image)
+                guard let png = rep.representation(using: .png, properties: [:]) else { return }
+                let path = "/tmp/screentap/coordtest.png"
+                try png.write(to: URL(fileURLWithPath: path))
+                Log.d("COORD TEST: region \(region) → \(image.width)×\(image.height) saved to \(path)")
+            } catch {
+                Log.e("COORD TEST failed: \(error.localizedDescription)")
+            }
+        }
+    }
 
     private func scheduleDemo() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in

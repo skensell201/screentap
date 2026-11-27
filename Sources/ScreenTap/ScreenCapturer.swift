@@ -27,6 +27,14 @@ final class ScreenCapturer {
     /// Captures `region` given in global Cocoa coordinates (origin bottom-left).
     func capture(region: CGRect) async throws -> CGImage {
         guard Permissions.screenRecordingGranted else { throw CaptureError.screenRecordingDenied }
+
+        if #available(macOS 15.2, *) {
+            // The one-shot API takes the region directly, works across multiple
+            // displays and does not enumerate the on-screen content, which is what
+            // makes macOS ask for the screen recording permission.
+            return try await captureRegionDirectly(region)
+        }
+
         guard let screen = ScreenMapper.screen(for: region) else { throw CaptureError.noDisplay }
 
         if #available(macOS 14.0, *) {
@@ -39,6 +47,18 @@ final class ScreenCapturer {
         }
 
         return try captureWithCoreGraphics(region: region)
+    }
+
+    // MARK: - Direct region capture
+
+    @available(macOS 15.2, *)
+    private func captureRegionDirectly(_ region: CGRect) async throws -> CGImage {
+        let quartzRect = ScreenMapper.quartzRect(fromCocoaRect: region)
+        Log.d("Capturing quartz rect \(quartzRect)")
+        let image = try await SCScreenshotManager.captureImage(in: quartzRect)
+        guard image.width > 0, image.height > 0 else { throw CaptureError.captureFailed }
+        Log.d("Captured \(image.width)×\(image.height)")
+        return image
     }
 
     // MARK: - ScreenCaptureKit
@@ -76,9 +96,12 @@ final class ScreenCapturer {
     // MARK: - Legacy fallback
 
     private func captureWithCoreGraphics(region: CGRect) throws -> CGImage {
+        // CGWindowListCreateImage expects Quartz coordinates (origin top-left),
+        // while the selection is expressed in Cocoa coordinates (origin bottom-left).
+        let quartzRect = ScreenMapper.quartzRect(fromCocoaRect: region)
         let options: CGWindowListOption = [.optionOnScreenOnly]
         let listOptions: CGWindowImageOption = [.boundsIgnoreFraming, .bestResolution]
-        guard let image = CGWindowListCreateImage(region, options, CGWindowID(0), listOptions) else {
+        guard let image = CGWindowListCreateImage(quartzRect, options, CGWindowID(0), listOptions) else {
             throw CaptureError.captureFailed
         }
         return image
@@ -124,6 +147,19 @@ enum ScreenMapper {
     static func displayID(of screen: NSScreen) -> CGDirectDisplayID {
         let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
         return number?.uint32Value ?? 0
+    }
+
+    /// Converts a rectangle in global Cocoa coordinates (origin bottom-left) into
+    /// the Quartz global display space (origin top-left of the primary display).
+    static func quartzRect(fromCocoaRect rect: CGRect) -> CGRect {
+        let primary = NSScreen.screens.first ?? NSScreen.main
+        let primaryTop = primary?.frame.maxY ?? NSScreen.screens.map(\.frame.maxY).max() ?? 0
+        return CGRect(
+            x: rect.minX,
+            y: primaryTop - rect.maxY,
+            width: rect.width,
+            height: rect.height
+        )
     }
 
     private static func overlapArea(_ a: CGRect, _ b: CGRect) -> CGFloat {

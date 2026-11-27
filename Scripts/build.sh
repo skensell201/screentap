@@ -42,7 +42,18 @@ fi
 
 chmod +x "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
-IDENTITY="${SCREENTAP_CODESIGN_IDENTITY:--}"
+IDENTITY=""
+if [[ -n "${SCREENTAP_CODESIGN_IDENTITY:-}" ]]; then
+    IDENTITY="$SCREENTAP_CODESIGN_IDENTITY"
+elif [[ -f "$ROOT/.signing-identity" ]]; then
+    # Local, git ignored file with the identity to sign with.
+    IDENTITY="$(head -n 1 "$ROOT/.signing-identity" | tr -d '\r')"
+elif security find-identity -v -p codesigning 2>/dev/null | grep -q "ScreenTap SelfSigned"; then
+    IDENTITY="ScreenTap SelfSigned"
+else
+    IDENTITY="-"
+fi
+
 echo "==> Signing ($IDENTITY)"
 codesign --force --deep --sign "$IDENTITY" --options runtime "$APP_BUNDLE" 2>/dev/null \
     || codesign --force --deep --sign "$IDENTITY" "$APP_BUNDLE"
