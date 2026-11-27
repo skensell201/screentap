@@ -11,7 +11,13 @@ enum CaptureError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .screenRecordingDenied:
-            return "No screen recording permission. Enable it in “System Settings → Privacy & Security → Screen Recording”."
+            return """
+            No screen recording permission.
+
+            Open “System Settings → Privacy & Security → Screen & System Audio \
+            Recording”, find ScreenTap and switch it on. If it was already on, \
+            switch it off and on again, then restart ScreenTap from the menu bar.
+            """
         case .noDisplay:
             return "Could not determine the display that holds the selected area."
         case .captureFailed:

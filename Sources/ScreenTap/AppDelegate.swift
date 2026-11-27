@@ -110,6 +110,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         about.target = self
         menu.addItem(about)
 
+        // macOS applies permission changes to a running app only partially, so a
+        // restart makes a freshly granted permission take effect right away.
+        let restart = NSMenuItem(title: "Restart ScreenTap", action: #selector(restartApp), keyEquivalent: "r")
+        restart.target = self
+        menu.addItem(restart)
+
         let quit = NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
@@ -234,6 +240,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func quit() {
+        NSApp.terminate(nil)
+    }
+
+    /// Relaunches the app so that permission changes take effect immediately.
+    @objc private func restartApp() {
+        let bundleURL = Bundle.main.bundleURL.path
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/sh")
+        task.arguments = ["-c", "sleep 1; open '\(bundleURL)' >/dev/null 2>&1 &"]
+        task.standardOutput = FileHandle.nullDevice
+        task.standardError = FileHandle.nullDevice
+        do {
+            try task.run()
+        } catch {
+            Log.e("Could not relaunch the app: \(error.localizedDescription)")
+        }
         NSApp.terminate(nil)
     }
 

@@ -66,7 +66,9 @@ Accessibility is optional: without it the app still works, but the context menu 
 application under the cursor pops up when the gesture is used.
 
 The menu bar icon opens both settings pages at any time, and it also holds the
-"Launch at Login" switch and a manual trigger for the selection mode.
+"Launch at Login" switch, a manual trigger for the selection mode and a **Restart
+ScreenTap** item — macOS applies permission changes to a running app only partially,
+so a restart makes a freshly granted permission take effect immediately.
 
 ## Usage
 
