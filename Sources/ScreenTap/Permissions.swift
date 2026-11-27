@@ -14,6 +14,18 @@ enum Permissions {
         AXIsProcessTrusted()
     }
 
+    /// Asks macOS for the screen recording permission.
+    ///
+    /// The grant is bound to the code requirement of the running binary, which is
+    /// why it has to be requested from the app itself: an entry that was added
+    /// to the System Settings list by hand may refer to an older signature.
+    @discardableResult
+    static func requestScreenRecording() -> Bool {
+        let granted = CGRequestScreenCaptureAccess()
+        Log.d("Screen recording request returned \(granted)")
+        return granted
+    }
+
     /// Shows the system prompt for the Accessibility permission.
     static func requestAccessibility() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]

@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let launchAgent = LaunchAgentController()
     private var permissionTimer: Timer?
     private var didAskForPermissions = false
+    private var lastPermissionState: (screen: Bool, accessibility: Bool)?
 
     private var isDemoMode: Bool { CommandLine.arguments.contains("--demo") }
 
@@ -42,6 +43,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if CommandLine.arguments.contains("--coord-test") {
             runCoordinateTest()
+        }
+
+        if CommandLine.arguments.contains("--request-permissions") {
+            Log.d("Requesting the permissions from the command line")
+            Permissions.requestScreenRecording()
+            Permissions.requestAccessibility()
         }
 
         Log.d("ScreenTap started")
@@ -96,13 +103,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         menu.addItem(.separator())
 
-        let screen = NSMenuItem(title: "Screen Recording Permission…", action: #selector(openScreenRecordingSettings), keyEquivalent: "")
-        screen.target = self
-        menu.addItem(screen)
+        let requestScreen = NSMenuItem(title: "Request Screen Recording Permission", action: #selector(requestScreenRecording), keyEquivalent: "")
+        requestScreen.target = self
+        menu.addItem(requestScreen)
 
-        let accessibility = NSMenuItem(title: "Accessibility Permission…", action: #selector(openAccessibilitySettings), keyEquivalent: "")
-        accessibility.target = self
-        menu.addItem(accessibility)
+        let requestAccessibility = NSMenuItem(title: "Request Accessibility Permission", action: #selector(requestAccessibility), keyEquivalent: "")
+        requestAccessibility.target = self
+        menu.addItem(requestAccessibility)
+
+        let settings = NSMenuItem(title: "Open Privacy Settings…", action: #selector(openScreenRecordingSettings), keyEquivalent: "")
+        settings.target = self
+        menu.addItem(settings)
 
         menu.addItem(.separator())
 
@@ -131,6 +142,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let screenOK = Permissions.screenRecordingGranted
         let accessibilityOK = Permissions.accessibilityGranted
 
+        // macOS does not hand a freshly granted permission to a running process
+        // completely, so restart as soon as one of them arrives.
+        if let previous = lastPermissionState {
+            if (!previous.screen && screenOK) || (!previous.accessibility && accessibilityOK) {
+                Log.d("A permission was granted — restarting ScreenTap")
+                lastPermissionState = (screenOK, accessibilityOK)
+                restartApp()
+                return
+            }
+        }
+        lastPermissionState = (screenOK, accessibilityOK)
+
         detector.refreshSource()
 
         // "camera.viewfinder.badge.exclamationmark" does not exist in SF Symbols,
@@ -155,44 +178,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if !didAskForPermissions && (!screenOK || !accessibilityOK) && !isSilentMode {
             didAskForPermissions = true
-            presentPermissionHint(screenOK: screenOK, accessibilityOK: accessibilityOK)
-        }
-    }
-
-    private func presentPermissionHint(screenOK: Bool, accessibilityOK: Bool) {
-        let alert = NSAlert()
-        alert.messageText = "ScreenTap is almost ready"
-
-        var lines: [String] = []
-        if !screenOK {
-            lines.append("""
-            • “Screen Recording” is required to capture the screen contents.
-              macOS asks for it the first time a screenshot is taken; you can also
-              enable it manually in
-              “System Settings → Privacy & Security → Screen Recording”.
-            """)
-        }
-        if !accessibilityOK {
-            lines.append("""
-            • “Accessibility” lets ScreenTap intercept the presses of both mouse
-              buttons without letting the context menu of the app under the cursor
-              appear. Enable it in
-              “System Settings → Privacy & Security → Accessibility”.
-            """)
-        }
-
-        alert.informativeText = lines.joined(separator: "\n")
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Open Settings")
-        alert.addButton(withTitle: "Later")
-
-        // The app may have been started in the background (login item), so bring
-        // the dialog to the front before showing it.
-        NSApp.activate(ignoringOtherApps: true)
-
-        if alert.runModal() == .alertFirstButtonReturn {
-            if !screenOK { Permissions.openScreenRecordingSettings() }
-            if !accessibilityOK { Permissions.openAccessibilitySettings() }
+            // No modal dialog here: a blocking alert at launch would stall the
+            // whole app and swallow the permission request. The warning triangle
+            // in the menu bar plus the system prompt on the first gesture is
+            // enough of a hint.
+            Log.d("Permissions missing: screen recording \(screenOK), accessibility \(accessibilityOK)")
         }
     }
 
@@ -218,6 +208,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func openScreenRecordingSettings() {
         Permissions.openScreenRecordingSettings()
+    }
+
+    @objc private func requestScreenRecording() {
+        Permissions.requestScreenRecording()
+    }
+
+    @objc private func requestAccessibility() {
+        Permissions.requestAccessibility()
     }
 
     @objc private func openAccessibilitySettings() {
@@ -267,6 +265,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func beginSelection() {
         guard !overlay.isActive else { return }
+
+        // The first use is the natural moment to ask for the screen recording
+        // permission: macOS binds the grant to the running binary, which is
+        // exactly what we need, and the app restarts itself once it arrives.
+        if !Permissions.screenRecordingGranted {
+            Log.d("No screen recording permission yet — asking macOS")
+            Permissions.requestScreenRecording()
+        }
+
         detector.isSuspended = true
         overlay.begin()
     }
@@ -299,6 +306,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 } catch {
                     Log.e("Capture failed: \(error.localizedDescription)")
                     FeedbackSound.playFailure()
+                    // Ask macOS right away so the grant is bound to this binary.
+                    if case CaptureError.screenRecordingDenied = error {
+                        Permissions.requestScreenRecording()
+                    }
                     self.presentError(title: "Could not take the screenshot", message: error.localizedDescription)
                 }
             }

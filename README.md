@@ -59,16 +59,25 @@ macOS asks for two permissions. They are granted once, in System Settings:
 
 | Permission | Where to enable it | Why it is needed |
 |---|---|---|
-| **Screen Recording** | Privacy & Security → Screen Recording | Capturing the screen contents. Without it no screenshot can be taken |
+| **Screen Recording** | Privacy & Security → Screen & System Audio Recording | Capturing the screen contents. Without it no screenshot can be taken |
 | **Accessibility** | Privacy & Security → Accessibility | Intercepting the presses of both buttons without letting the context menu of the app under the cursor appear |
+
+**Ask for the permissions from inside the app.** The menu bar icon offers "Request Screen
+Recording Permission" and "Request Accessibility Permission", which make macOS show its own
+prompts. Use them instead of adding the app to the lists by hand: a grant that macOS issues
+itself is bound to the code requirement of the running binary, while an entry added by hand
+may still refer to an older signature and therefore never take effect.
+
+The app also asks for the screen recording permission by itself the first time the gesture is
+used, and it restarts itself as soon as a permission arrives — macOS does not hand a newly
+granted permission to a running process completely.
 
 Accessibility is optional: without it the app still works, but the context menu of the
 application under the cursor pops up when the gesture is used.
 
 The menu bar icon opens both settings pages at any time, and it also holds the
 "Launch at Login" switch, a manual trigger for the selection mode and a **Restart
-ScreenTap** item — macOS applies permission changes to a running app only partially,
-so a restart makes a freshly granted permission take effect immediately.
+ScreenTap** item.
 
 ## Usage
 
@@ -152,6 +161,8 @@ Useful flags:
 - `--demo` — scripted selection and capture; the result is written to `/tmp/screentap-demo.png`.
 - `--coord-test` — captures the top right corner of the screen (the menu bar clock) into
   `/tmp/screentap/coordtest.png` to verify the coordinate conversion.
+- `--request-permissions` — asks macOS for the screen recording and accessibility
+  permissions right away, without waiting for the first gesture.
 
 ### Stable code signature (for permissions)
 
